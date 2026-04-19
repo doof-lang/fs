@@ -7,5 +7,6 @@
       "extraCopyPaths": ["native_fs.hpp"]
     }
   },
-  "dependencies": {}
+  "dependencies": {
+  }
 }
