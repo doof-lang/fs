@@ -5,7 +5,7 @@ POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writi
 ## Usage
 
 ```doof
-import { readText, writeText, readLineStream, exists } from "fs"
+import { readText, writeText, readLineStream, exists } from "std/fs"
 
 // One-shot read
 content := try readText("/etc/hostname")
