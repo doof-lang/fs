@@ -39,10 +39,18 @@ function normalizeStreamBlockSize(blockSize: int): int {
 
 class BlockReadStream implements Stream<readonly byte[]> {
   native: NativeBlobReadStream
+  currentValue: readonly byte[] = []
 
-  next(): readonly byte[] | null {
-    return this.native.next()
+  next(): bool {
+    chunk := this.native.next()
+    if chunk == null {
+      return false
+    }
+    this.currentValue = chunk!
+    return true
   }
+
+  value(): readonly byte[] => this.currentValue
 }
 
 export function readBlockStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
