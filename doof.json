@@ -1,5 +1,5 @@
 {
-  "name": "fs",
+  "name": "std/fs",
   "version": "0.1.0",
   "license": "ISC",
   "build": {
