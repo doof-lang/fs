@@ -60,6 +60,22 @@ inline std::string joinPath(const std::string& dirPath, const std::string& entry
     return dirPath + "/" + entryName;
 }
 
+inline std::string basename(const std::string& path) {
+    size_t end = path.size();
+    while (end > 1 && path[end - 1] == '/') {
+        --end;
+    }
+
+    const size_t slash = path.rfind('/', end - 1);
+    if (slash == std::string::npos) {
+        return path.substr(0, end);
+    }
+    if (slash == 0 && end == 1) {
+        return "/";
+    }
+    return path.substr(slash + 1, end - slash - 1);
+}
+
 inline EntryKind entryKindFromMode(mode_t mode) {
     if (S_ISREG(mode)) {
         return EntryKind::File;
@@ -75,6 +91,10 @@ inline EntryKind entryKindFromMode(mode_t mode) {
 
 inline int normalizeBlockSize(int blockSize) {
     return blockSize > 0 ? blockSize : 65536;
+}
+
+inline std::shared_ptr<Instant> instantFromStatTime(time_t seconds) {
+    return Instant::ofEpochSeconds(static_cast<int64_t>(seconds));
 }
 
 inline doof::Result<int, IoError> openReadableFile(const std::string& path) {
@@ -426,17 +446,38 @@ inline bool isDirectory(const std::string& path) {
     return ::lstat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>, IoError> readDir(const std::string& path) {
+inline doof::Result<std::shared_ptr<FileInfo>, IoError> metadata(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>, IoError>::failure(IoError::InvalidPath);
+        return doof::Result<std::shared_ptr<FileInfo>, IoError>::failure(IoError::InvalidPath);
+    }
+
+    struct stat st {};
+    if (::lstat(path.c_str(), &st) != 0) {
+        return failureResult<std::shared_ptr<FileInfo>>(errno);
+    }
+
+    const int64_t size = S_ISREG(st.st_mode) ? static_cast<int64_t>(st.st_size) : 0;
+    return doof::Result<std::shared_ptr<FileInfo>, IoError>::success(
+        std::make_shared<FileInfo>(
+            basename(path),
+            entryKindFromMode(st.st_mode),
+            size,
+            instantFromStatTime(st.st_mtime)
+        )
+    );
+}
+
+inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError> readDir(const std::string& path) {
+    if (isInvalidPath(path)) {
+        return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError>::failure(IoError::InvalidPath);
     }
 
     DIR* dir = ::opendir(path.c_str());
     if (!dir) {
-        return failureResult<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>>(errno);
+        return failureResult<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>(errno);
     }
 
-    auto entries = std::make_shared<std::vector<std::shared_ptr<DirEntry>>>();
+    auto entries = std::make_shared<std::vector<std::shared_ptr<FileInfo>>>();
     while (true) {
         errno = 0;
         dirent* rawEntry = ::readdir(dir);
@@ -444,7 +485,7 @@ inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>, IoE
             if (errno != 0) {
                 const int err = errno;
                 ::closedir(dir);
-                return failureResult<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>>(err);
+                return failureResult<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>(err);
             }
             break;
         }
@@ -459,21 +500,20 @@ inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>, IoE
         if (::lstat(fullPath.c_str(), &st) != 0) {
             const int err = errno;
             ::closedir(dir);
-            return failureResult<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>>(err);
+            return failureResult<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>(err);
         }
 
         const int64_t size = S_ISREG(st.st_mode) ? static_cast<int64_t>(st.st_size) : 0;
-        const int64_t modifiedAt = static_cast<int64_t>(st.st_mtime);
-        entries->push_back(std::make_shared<DirEntry>(
+        entries->push_back(std::make_shared<FileInfo>(
             name,
             entryKindFromMode(st.st_mode),
             size,
-            modifiedAt
+            instantFromStatTime(st.st_mtime)
         ));
     }
 
     ::closedir(dir);
-    return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<DirEntry>>>, IoError>::success(entries);
+    return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError>::success(entries);
 }
 
 inline doof::Result<void, IoError> mkdir(const std::string& path) {

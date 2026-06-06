@@ -1,5 +1,7 @@
 // Public filesystem data types shared by the native runtime and consumers.
 
+import { Instant } from "std/time"
+
 export enum EntryKind {
   File = 0,
   Directory = 1,
@@ -7,11 +9,11 @@ export enum EntryKind {
   Other = 3,
 }
 
-export class DirEntry {
+export class FileInfo {
   name: string
   kind: EntryKind
   size: long
-  modifiedAt: long
+  modifiedAt: Instant
 }
 
 export enum IoError {

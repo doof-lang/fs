@@ -1,6 +1,6 @@
 # fs
 
-POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writing entire files as text or binary, streaming APIs for large files, and directory utilities — all returning `Result` types so errors are handled explicitly.
+POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writing entire files as text or binary, streaming APIs for large files, and directory utilities - all returning `Result` types so errors are handled explicitly.
 
 ## Usage
 
@@ -38,16 +38,16 @@ Classifies a directory entry returned by `readDir`.
 | `Symlink` | `2` | Symbolic link |
 | `Other` | `3` | Device node, pipe, socket, etc. |
 
-#### `DirEntry`
+#### `FileInfo`
 
-Metadata for a single entry returned by `readDir`.
+Metadata for a path returned by `metadata` or a single entry returned by `readDir`.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Entry name (not a full path) |
+| `name` | `string` | Path basename or directory entry name (not a full path) |
 | `kind` | `EntryKind` | Entry type |
 | `size` | `long` | File size in bytes |
-| `modifiedAt` | `long` | Last-modified time as a Unix timestamp (seconds) |
+| `modifiedAt` | `Instant` | Last-modified time |
 
 #### `IoError`
 
@@ -141,7 +141,11 @@ Return `true` if the path is a regular file.
 
 Return `true` if the path is a directory.
 
-#### `readDir(path: string): Result<DirEntry[], IoError>`
+#### `metadata(path: string): Result<FileInfo, IoError>`
+
+Return metadata for a file, directory, symlink, or other filesystem entry.
+
+#### `readDir(path: string): Result<FileInfo[], IoError>`
 
 Return the entries of a directory. Does not recurse.
 

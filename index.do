@@ -3,12 +3,12 @@
 import { blobStreamToLineStream } from "std/stream"
 
 export {
-  EntryKind, DirEntry, IoError,
+  EntryKind, FileInfo, IoError,
 } from "./types"
 
 // Native POSIX-oriented filesystem interop.
 
-import { DirEntry, IoError } from "./types"
+import { FileInfo, IoError } from "./types"
 
 export import function readText(path: string): Result<string, IoError> from "native_fs.hpp" as doof_fs::readText
 export import function writeText(path: string, content: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::writeText
@@ -96,7 +96,8 @@ export function writeLineStream(path: string, lines: Stream<string>): Result<voi
 export import function exists(path: string): bool from "native_fs.hpp" as doof_fs::exists
 export import function isFile(path: string): bool from "native_fs.hpp" as doof_fs::isFile
 export import function isDirectory(path: string): bool from "native_fs.hpp" as doof_fs::isDirectory
-export import function readDir(path: string): Result<DirEntry[], IoError> from "native_fs.hpp" as doof_fs::readDir
+export import function metadata(path: string): Result<FileInfo, IoError> from "native_fs.hpp" as doof_fs::metadata
+export import function readDir(path: string): Result<FileInfo[], IoError> from "native_fs.hpp" as doof_fs::readDir
 export import function mkdir(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::mkdir
 export import function remove(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::remove
 export import function rename(sourcePath: string, destPath: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::rename

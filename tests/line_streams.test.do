@@ -1,4 +1,4 @@
-import { exists, readBlob, readBlockStream, readLineStream, readText, remove, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
+import { EntryKind, exists, metadata, readBlob, readBlockStream, readDir, readLineStream, readText, remove, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
 import { blobStreamToLineStream } from "std/stream"
 
 function artifactPath(name: string): string {
@@ -51,6 +51,19 @@ function assertDecodedLines(path: string, blockSize: int, expected: string[]): v
   }
 }
 
+function assertDirContainsFile(path: string, name: string): void {
+  entries := try! readDir(path)
+  for entry of entries {
+    if entry.name == name {
+      assert(entry.kind == EntryKind.File, "expected directory entry kind to be file")
+      assert(entry.modifiedAt.toEpochSeconds() > 0L, "expected directory entry modified timestamp")
+      return
+    }
+  }
+
+  assert(false, "expected directory to contain file")
+}
+
 export function testAll() {
   emptyPath := artifactPath(".line-streams.empty.txt")
   mixedPath := artifactPath(".line-streams.mixed.txt")
@@ -62,6 +75,13 @@ export function testAll() {
   trailingCrPath := artifactPath(".line-streams.trailing-cr.txt")
 
   try! writeText(emptyPath, "")
+  emptyMetadata := try! metadata(emptyPath)
+  assert(emptyMetadata.name == ".line-streams.empty.txt", "expected metadata name")
+  assert(emptyMetadata.kind == EntryKind.File, "expected metadata kind to be file")
+  assert(emptyMetadata.size == 0L, "expected empty file size")
+  assert(emptyMetadata.modifiedAt.toEpochSeconds() > 0L, "expected modified timestamp")
+  assertDirContainsFile("build/tests", ".line-streams.empty.txt")
+
   try! writeText(mixedPath, "alpha\r\n\rbeta\n")
   try! writeText(sourcePath, "alpha\r\n\rbeta\n")
   try! writeBlob(blobSourcePath, [0, 1, 2, 3, 254, 255])
