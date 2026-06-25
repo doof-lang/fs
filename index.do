@@ -20,7 +20,7 @@ export import function appendBlob(path: string, data: readonly byte[]): Result<v
 
 function resolveResourcePath(path: string): Result<string, IoError> {
   resolvedPath := resourcePath(path) else {
-    return Failure(IoError.InvalidPath)
+    return Failure(.InvalidPath)
   }
   return Success(resolvedPath)
 }
@@ -60,25 +60,22 @@ class BlockReadStream implements Stream<readonly byte[]> {
   currentValue: readonly byte[] = []
 
   next(): bool {
-    chunk := this.native.next()
+    chunk := native.next()
     if chunk == null {
       return false
     }
-    this.currentValue = chunk!
+    currentValue = chunk!
     return true
   }
 
-  value(): readonly byte[] => this.currentValue
+  value(): readonly byte[] => currentValue
 }
 
 export function readBlockStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
   try native := NativeBlobReadStream.open(path, normalizeStreamBlockSize(blockSize))
-  let stream: Stream<readonly byte[]> = BlockReadStream {
+  return Success(BlockReadStream {
     native,
-  }
-  return Success {
-    value: stream
-  }
+  })
 }
 
 export function readBlobStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
@@ -87,10 +84,7 @@ export function readBlobStream(path: string, blockSize: int = 65536): Result<Str
 
 export function readLineStream(path: string, blockSize: int = 65536): Result<Stream<string>, IoError> {
   try blocks := readBlockStream(path, blockSize)
-  let stream: Stream<string> = blobStreamToLineStream(blocks)
-  return Success {
-    value: stream
-  }
+  return Success(blobStreamToLineStream(blocks))
 }
 
 export function readResourceBlockStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
