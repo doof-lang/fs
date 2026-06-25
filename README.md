@@ -1,6 +1,11 @@
-# fs
+# std/fs
 
 POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writing entire files as text or binary, streaming APIs for large files, and directory utilities - all returning `Result` types so errors are handled explicitly.
+
+## Documentation
+
+- [Reference documentation](docs/API.md) covers types, one-shot I/O, streaming I/O, metadata, directory operations, error handling, and behavioral notes.
+- Tests can be run with `doof test fs`.
 
 ## Usage
 
