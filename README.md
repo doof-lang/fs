@@ -10,10 +10,13 @@ POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writi
 ## Usage
 
 ```doof
-import { readText, writeText, readLineStream, exists } from "std/fs"
+import { readText, readTextResource, writeText, readLineStream, exists } from "std/fs"
 
 // One-shot read
 content := try readText("/etc/hostname")
+
+// Read from bundled app resources
+template := try readTextResource("templates/welcome.txt")
 
 // Stream lines lazily
 stream := try readLineStream("data.csv")
@@ -85,6 +88,14 @@ Write (or overwrite) a file with the given string content.
 
 Read an entire file as a raw byte array.
 
+#### `readTextResource(path: string): Result<string, IoError>`
+
+Resolve `path` with `std/path.resourcePath`, then read the bundled resource as UTF-8 text.
+
+#### `readBlobResource(path: string): Result<readonly byte[], IoError>`
+
+Resolve `path` with `std/path.resourcePath`, then read the bundled resource as raw bytes.
+
 #### `writeBlob(path: string, data: readonly byte[]): Result<void, IoError>`
 
 Write (or overwrite) a file with the given bytes.
@@ -107,13 +118,25 @@ Streaming reads process the file in chunks, avoiding loading the entire file int
 
 Open a file for streaming reads, yielding raw byte-array chunks.
 
+#### `readResourceBlockStream(path: string, blockSize?: int): Result<Stream<readonly byte[]>, IoError>`
+
+Resolve `path` with `std/path.resourcePath`, then open the bundled resource for streaming reads.
+
 #### `readBlobStream(path: string, blockSize?: int): Result<Stream<readonly byte[]>, IoError>`
 
 Alias for `readBlockStream`.
 
+#### `readResourceBlobStream(path: string, blockSize?: int): Result<Stream<readonly byte[]>, IoError>`
+
+Alias for `readResourceBlockStream`.
+
 #### `readLineStream(path: string, blockSize?: int): Result<Stream<string>, IoError>`
 
 Open a file for streaming reads, yielding one decoded UTF-8 line per iteration. Handles `\n`, `\r`, and `\r\n` line endings.
+
+#### `readResourceLineStream(path: string, blockSize?: int): Result<Stream<string>, IoError>`
+
+Resolve `path` with `std/path.resourcePath`, then stream the bundled resource as UTF-8 lines.
 
 ```doof
 stream := try readLineStream("large.log")
@@ -153,6 +176,10 @@ Return metadata for a file, directory, symlink, or other filesystem entry.
 #### `readDir(path: string): Result<FileInfo[], IoError>`
 
 Return the entries of a directory. Does not recurse.
+
+#### `readResourceDir(path: string): Result<FileInfo[], IoError>`
+
+Resolve `path` with `std/path.resourcePath`, then return the entries of the bundled resource directory.
 
 #### `mkdir(path: string): Result<void, IoError>`
 

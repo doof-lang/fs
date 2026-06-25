@@ -1,5 +1,6 @@
 // Public barrel for the fs package.
 
+import { resourcePath } from "std/path"
 import { blobStreamToLineStream } from "std/stream"
 
 export {
@@ -16,6 +17,23 @@ export import function readBlob(path: string): Result<readonly byte[], IoError> 
 export import function writeBlob(path: string, data: readonly byte[]): Result<void, IoError> from "native_fs.hpp" as doof_fs::writeBlob
 export import function appendText(path: string, content: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::appendText
 export import function appendBlob(path: string, data: readonly byte[]): Result<void, IoError> from "native_fs.hpp" as doof_fs::appendBlob
+
+function resolveResourcePath(path: string): Result<string, IoError> {
+  resolvedPath := resourcePath(path) else {
+    return Failure(IoError.InvalidPath)
+  }
+  return Success(resolvedPath)
+}
+
+export function readTextResource(path: string): Result<string, IoError> {
+  try resolved := resolveResourcePath(path)
+  return readText(resolved)
+}
+
+export function readBlobResource(path: string): Result<readonly byte[], IoError> {
+  try resolved := resolveResourcePath(path)
+  return readBlob(resolved)
+}
 
 import class NativeBlobReadStream from "native_fs.hpp" as NativeBlobReadStream {
   static open(path: string, blockSize: int): Result<NativeBlobReadStream, IoError>
@@ -75,6 +93,20 @@ export function readLineStream(path: string, blockSize: int = 65536): Result<Str
   }
 }
 
+export function readResourceBlockStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
+  try resolved := resolveResourcePath(path)
+  return readBlockStream(resolved, blockSize)
+}
+
+export function readResourceBlobStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError> {
+  return readResourceBlockStream(path, blockSize)
+}
+
+export function readResourceLineStream(path: string, blockSize: int = 65536): Result<Stream<string>, IoError> {
+  try resolved := resolveResourcePath(path)
+  return readLineStream(resolved, blockSize)
+}
+
 export function writeBlobStream(path: string, chunks: Stream<readonly byte[]>): Result<void, IoError> {
   try writer := NativeFileWriteStream.open(path)
   for chunk of chunks {
@@ -98,6 +130,10 @@ export import function isFile(path: string): bool from "native_fs.hpp" as doof_f
 export import function isDirectory(path: string): bool from "native_fs.hpp" as doof_fs::isDirectory
 export import function metadata(path: string): Result<FileInfo, IoError> from "native_fs.hpp" as doof_fs::metadata
 export import function readDir(path: string): Result<FileInfo[], IoError> from "native_fs.hpp" as doof_fs::readDir
+export function readResourceDir(path: string): Result<FileInfo[], IoError> {
+  try resolved := resolveResourcePath(path)
+  return readDir(resolved)
+}
 export import function mkdir(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::mkdir
 export import function remove(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::remove
 export import function rename(sourcePath: string, destPath: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::rename

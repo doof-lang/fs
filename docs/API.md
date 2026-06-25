@@ -24,11 +24,17 @@ import {
   metadata,
   mkdir,
   readBlob,
+  readBlobResource,
   readBlockStream,
   readBlobStream,
   readDir,
   readLineStream,
+  readResourceBlobStream,
+  readResourceBlockStream,
+  readResourceDir,
+  readResourceLineStream,
   readText,
+  readTextResource,
   remove,
   rename,
   writeBlob,
@@ -123,6 +129,25 @@ export import function readBlob(path: string): Result<readonly byte[], IoError>
 
 Read an entire file as raw bytes.
 
+### Resource Reads
+
+Resource read helpers resolve the supplied path with `std/path.resourcePath`
+before calling the matching filesystem read helper. If the resource path cannot
+be resolved safely, they return `Failure { error: IoError.InvalidPath }`.
+Filesystem errors from the underlying read are returned unchanged.
+
+```doof
+export function readTextResource(path: string): Result<string, IoError>
+export function readBlobResource(path: string): Result<readonly byte[], IoError>
+```
+
+Use these for files bundled with an application:
+
+```doof
+template := try! readTextResource("templates/welcome.txt")
+logo := try! readBlobResource("images/logo.png")
+```
+
 ### `writeBlob`
 
 ```doof
@@ -172,6 +197,20 @@ export function readBlobStream(path: string, blockSize: int = 65536): Result<Str
 
 Alias for `readBlockStream`. Use whichever name reads more clearly at the call
 site.
+
+### Resource Read Streams
+
+Resource stream helpers resolve the supplied path with `std/path.resourcePath`
+before opening the matching read stream. If the resource path cannot be resolved
+safely, they return `Failure { error: IoError.InvalidPath }`.
+
+```doof
+export function readResourceBlockStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError>
+export function readResourceBlobStream(path: string, blockSize: int = 65536): Result<Stream<readonly byte[]>, IoError>
+export function readResourceLineStream(path: string, blockSize: int = 65536): Result<Stream<string>, IoError>
+```
+
+`readResourceBlobStream` is an alias for `readResourceBlockStream`.
 
 ### `readLineStream`
 
@@ -274,6 +313,16 @@ for entry of entries {
   }
 }
 ```
+
+### `readResourceDir`
+
+```doof
+export function readResourceDir(path: string): Result<FileInfo[], IoError>
+```
+
+Resolve `path` with `std/path.resourcePath`, then return direct entries in that
+resource directory. Resource path resolution failures return
+`IoError.InvalidPath`; directory read errors are returned unchanged.
 
 ### `mkdir`
 
