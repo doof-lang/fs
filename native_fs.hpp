@@ -46,11 +46,11 @@ inline IoError mapErrno(int err) {
 
 template <typename T>
 inline doof::Result<T, IoError> failureResult(int err) {
-    return doof::Result<T, IoError>::failure(mapErrno(err));
+    return doof::Failure<IoError>{mapErrno(err)};
 }
 
 inline doof::Result<void, IoError> failureVoid(int err) {
-    return doof::Result<void, IoError>::failure(mapErrno(err));
+    return doof::Failure<IoError>{mapErrno(err)};
 }
 
 inline std::string joinPath(const std::string& dirPath, const std::string& entryName) {
@@ -99,7 +99,7 @@ inline std::shared_ptr<Instant> instantFromStatTime(time_t seconds) {
 
 inline doof::Result<int, IoError> openReadableFile(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<int, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), O_RDONLY);
@@ -115,15 +115,15 @@ inline doof::Result<int, IoError> openReadableFile(const std::string& path) {
     }
     if (S_ISDIR(st.st_mode)) {
         ::close(fd);
-        return doof::Result<int, IoError>::failure(IoError::IsDirectory);
+        return doof::Failure<IoError>{IoError::IsDirectory};
     }
 
-    return doof::Result<int, IoError>::success(fd);
+    return doof::Success<int>{fd};
 }
 
 inline doof::Result<int, IoError> openWritableFile(const std::string& path, int flags) {
     if (isInvalidPath(path)) {
-        return doof::Result<int, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), flags, 0666);
@@ -131,7 +131,7 @@ inline doof::Result<int, IoError> openWritableFile(const std::string& path, int 
         return failureResult<int>(errno);
     }
 
-    return doof::Result<int, IoError>::success(fd);
+    return doof::Success<int>{fd};
 }
 
 inline doof::Result<void, IoError> writeAll(int fd, const uint8_t* data, size_t size);
@@ -147,13 +147,11 @@ class NativeBlobReadStream {
 public:
     static doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError> open(const std::string& path, int32_t blockSize) {
         const auto opened = openReadableFile(path);
-        if (opened.isFailure()) {
-            return doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError>::failure(opened.error());
+        if (doof::is_failure(opened)) {
+            return doof::Failure<IoError>{doof::failure_error(opened)};
         }
 
-        return doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError>::success(
-            std::shared_ptr<NativeBlobReadStream>(new NativeBlobReadStream(opened.value(), normalizeBlockSize(blockSize)))
-        );
+        return doof::Success<std::shared_ptr<NativeBlobReadStream>>{std::shared_ptr<NativeBlobReadStream>(new NativeBlobReadStream(doof::success_value(opened), normalizeBlockSize(blockSize)))};
     }
 
     ~NativeBlobReadStream() {
@@ -205,13 +203,11 @@ class NativeFileWriteStream {
 public:
     static doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError> open(const std::string& path) {
         const auto opened = openWritableFile(path, O_WRONLY | O_CREAT | O_TRUNC);
-        if (opened.isFailure()) {
-            return doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError>::failure(opened.error());
+        if (doof::is_failure(opened)) {
+            return doof::Failure<IoError>{doof::failure_error(opened)};
         }
 
-        return doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError>::success(
-            std::shared_ptr<NativeFileWriteStream>(new NativeFileWriteStream(opened.value()))
-        );
+        return doof::Success<std::shared_ptr<NativeFileWriteStream>>{std::shared_ptr<NativeFileWriteStream>(new NativeFileWriteStream(doof::success_value(opened)))};
     }
 
     ~NativeFileWriteStream() {
@@ -233,7 +229,7 @@ public:
 
     doof::Result<void, IoError> writeLine(const std::string& line) {
         const auto lineResult = writeAll(fd_, reinterpret_cast<const uint8_t*>(line.data()), line.size());
-        if (lineResult.isFailure()) {
+        if (doof::is_failure(lineResult)) {
             return lineResult;
         }
 
@@ -243,7 +239,7 @@ public:
 
     doof::Result<void, IoError> close() {
         if (fd_ < 0) {
-            return doof::Result<void, IoError>::success();
+            return doof::Success<void>{};
         }
 
         const int fd = fd_;
@@ -252,7 +248,7 @@ public:
             return failureVoid(errno);
         }
 
-        return doof::Result<void, IoError>::success();
+        return doof::Success<void>{};
     }
 
 private:
@@ -264,11 +260,11 @@ private:
 
 inline doof::Result<std::shared_ptr<std::vector<uint8_t>>, IoError> readBlob(const std::string& path) {
     const auto opened = openReadableFile(path);
-    if (opened.isFailure()) {
-        return doof::Result<std::shared_ptr<std::vector<uint8_t>>, IoError>::failure(opened.error());
+    if (doof::is_failure(opened)) {
+        return doof::Failure<IoError>{doof::failure_error(opened)};
     }
 
-    const int fd = opened.value();
+    const int fd = doof::success_value(opened);
 
     auto data = std::make_shared<std::vector<uint8_t>>();
     uint8_t buffer[4096];
@@ -289,17 +285,17 @@ inline doof::Result<std::shared_ptr<std::vector<uint8_t>>, IoError> readBlob(con
     }
 
     ::close(fd);
-    return doof::Result<std::shared_ptr<std::vector<uint8_t>>, IoError>::success(data);
+    return doof::Success<std::shared_ptr<std::vector<uint8_t>>>{data};
 }
 
 inline doof::Result<std::string, IoError> readText(const std::string& path) {
     const auto raw = readBlob(path);
-    if (raw.isFailure()) {
-        return doof::Result<std::string, IoError>::failure(raw.error());
+    if (doof::is_failure(raw)) {
+        return doof::Failure<IoError>{doof::failure_error(raw)};
     }
 
-    const auto& bytes = *raw.value();
-    return doof::Result<std::string, IoError>::success(std::string(bytes.begin(), bytes.end()));
+    const auto& bytes = *doof::success_value(raw);
+    return doof::Success<std::string>{std::string(bytes.begin(), bytes.end())};
 }
 
 inline doof::Result<void, IoError> writeAll(int fd, const uint8_t* data, size_t size) {
@@ -314,12 +310,12 @@ inline doof::Result<void, IoError> writeAll(int fd, const uint8_t* data, size_t 
         }
         written += static_cast<size_t>(writeCount);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> writeText(const std::string& path, const std::string& content) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -329,13 +325,13 @@ inline doof::Result<void, IoError> writeText(const std::string& path, const std:
 
     const auto result = writeAll(fd, reinterpret_cast<const uint8_t*>(content.data()), content.size());
     const int closeResult = ::close(fd);
-    if (result.isFailure()) {
+    if (doof::is_failure(result)) {
         return result;
     }
     if (closeResult != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> writeBlob(
@@ -343,7 +339,7 @@ inline doof::Result<void, IoError> writeBlob(
     const std::shared_ptr<std::vector<uint8_t>>& data
 ) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -359,18 +355,18 @@ inline doof::Result<void, IoError> writeBlob(
     }
     const auto result = writeAll(fd, raw, size);
     const int closeResult = ::close(fd);
-    if (result.isFailure()) {
+    if (doof::is_failure(result)) {
         return result;
     }
     if (closeResult != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> appendText(const std::string& path, const std::string& content) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
@@ -380,13 +376,13 @@ inline doof::Result<void, IoError> appendText(const std::string& path, const std
 
     const auto result = writeAll(fd, reinterpret_cast<const uint8_t*>(content.data()), content.size());
     const int closeResult = ::close(fd);
-    if (result.isFailure()) {
+    if (doof::is_failure(result)) {
         return result;
     }
     if (closeResult != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> appendBlob(
@@ -394,7 +390,7 @@ inline doof::Result<void, IoError> appendBlob(
     const std::shared_ptr<std::vector<uint8_t>>& data
 ) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
@@ -410,13 +406,13 @@ inline doof::Result<void, IoError> appendBlob(
     }
     const auto result = writeAll(fd, raw, size);
     const int closeResult = ::close(fd);
-    if (result.isFailure()) {
+    if (doof::is_failure(result)) {
         return result;
     }
     if (closeResult != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline bool exists(const std::string& path) {
@@ -448,7 +444,7 @@ inline bool isDirectory(const std::string& path) {
 
 inline doof::Result<std::shared_ptr<FileInfo>, IoError> metadata(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<std::shared_ptr<FileInfo>, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     struct stat st {};
@@ -457,19 +453,17 @@ inline doof::Result<std::shared_ptr<FileInfo>, IoError> metadata(const std::stri
     }
 
     const int64_t size = S_ISREG(st.st_mode) ? static_cast<int64_t>(st.st_size) : 0;
-    return doof::Result<std::shared_ptr<FileInfo>, IoError>::success(
-        std::make_shared<FileInfo>(
+    return doof::Success<std::shared_ptr<FileInfo>>{std::make_shared<FileInfo>(
             basename(path),
             entryKindFromMode(st.st_mode),
             size,
             instantFromStatTime(st.st_mtime)
-        )
-    );
+        )};
 }
 
 inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError> readDir(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     DIR* dir = ::opendir(path.c_str());
@@ -513,22 +507,22 @@ inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoE
     }
 
     ::closedir(dir);
-    return doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoError>::success(entries);
+    return doof::Success<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>{entries};
 }
 
 inline doof::Result<void, IoError> mkdir(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
     if (::mkdir(path.c_str(), 0777) != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> remove(const std::string& path) {
     if (isInvalidPath(path)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     struct stat st {};
@@ -540,22 +534,22 @@ inline doof::Result<void, IoError> remove(const std::string& path) {
     if (rc != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> rename(const std::string& sourcePath, const std::string& destPath) {
     if (isInvalidPath(sourcePath) || isInvalidPath(destPath)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
     if (::rename(sourcePath.c_str(), destPath.c_str()) != 0) {
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std::string& destPath) {
     if (isInvalidPath(sourcePath) || isInvalidPath(destPath)) {
-        return doof::Result<void, IoError>::failure(IoError::InvalidPath);
+        return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
     struct stat srcStat {};
@@ -563,7 +557,7 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
         return failureVoid(errno);
     }
     if (S_ISDIR(srcStat.st_mode)) {
-        return doof::Result<void, IoError>::failure(IoError::IsDirectory);
+        return doof::Failure<IoError>{IoError::IsDirectory};
     }
 
     const int srcFd = ::open(sourcePath.c_str(), O_RDONLY);
@@ -595,7 +589,7 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
             break;
         }
         const auto writeResult = writeAll(destFd, buffer, static_cast<size_t>(readCount));
-        if (writeResult.isFailure()) {
+        if (doof::is_failure(writeResult)) {
             ::close(srcFd);
             ::close(destFd);
             ::unlink(destPath.c_str());
@@ -613,7 +607,7 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
         ::unlink(destPath.c_str());
         return failureVoid(errno);
     }
-    return doof::Result<void, IoError>::success();
+    return doof::Success<void>{};
 }
 
 } // namespace doof_fs
@@ -622,13 +616,11 @@ class NativeBlobReadStream {
 public:
     static doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError> open(const std::string& path, int32_t blockSize) {
         const auto opened = doof_fs::NativeBlobReadStream::open(path, blockSize);
-        if (opened.isFailure()) {
-            return doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError>::failure(opened.error());
+        if (doof::is_failure(opened)) {
+            return doof::Failure<IoError>{doof::failure_error(opened)};
         }
 
-        return doof::Result<std::shared_ptr<NativeBlobReadStream>, IoError>::success(
-            std::shared_ptr<NativeBlobReadStream>(new NativeBlobReadStream(opened.value()))
-        );
+        return doof::Success<std::shared_ptr<NativeBlobReadStream>>{std::shared_ptr<NativeBlobReadStream>(new NativeBlobReadStream(doof::success_value(opened)))};
     }
 
     std::shared_ptr<std::vector<uint8_t>> next() {
@@ -646,13 +638,11 @@ class NativeFileWriteStream {
 public:
     static doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError> open(const std::string& path) {
         const auto opened = doof_fs::NativeFileWriteStream::open(path);
-        if (opened.isFailure()) {
-            return doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError>::failure(opened.error());
+        if (doof::is_failure(opened)) {
+            return doof::Failure<IoError>{doof::failure_error(opened)};
         }
 
-        return doof::Result<std::shared_ptr<NativeFileWriteStream>, IoError>::success(
-            std::shared_ptr<NativeFileWriteStream>(new NativeFileWriteStream(opened.value()))
-        );
+        return doof::Success<std::shared_ptr<NativeFileWriteStream>>{std::shared_ptr<NativeFileWriteStream>(new NativeFileWriteStream(doof::success_value(opened)))};
     }
 
     doof::Result<void, IoError> writeBlob(const std::shared_ptr<std::vector<uint8_t>>& data) {
