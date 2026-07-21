@@ -12,11 +12,11 @@ export {
 import { FileInfo, IoError } from "./types"
 
 export import isolated function readText(path: string): Result<string, IoError> from "native_fs.hpp" as doof_fs::readText
-export import isolated function writeText(path: string, content: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::writeText
+export import isolated function writeText(path: string, content: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::writeText
 export import isolated function readBlob(path: string): Result<readonly byte[], IoError> from "native_fs.hpp" as doof_fs::readBlob
-export import isolated function writeBlob(path: string, data: readonly byte[]): Result<void, IoError> from "native_fs.hpp" as doof_fs::writeBlob
-export import isolated function appendText(path: string, content: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::appendText
-export import isolated function appendBlob(path: string, data: readonly byte[]): Result<void, IoError> from "native_fs.hpp" as doof_fs::appendBlob
+export import isolated function writeBlob(path: string, data: readonly byte[]): Result<none, IoError> from "native_fs.hpp" as doof_fs::writeBlob
+export import isolated function appendText(path: string, content: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::appendText
+export import isolated function appendBlob(path: string, data: readonly byte[]): Result<none, IoError> from "native_fs.hpp" as doof_fs::appendBlob
 
 function resolveResourcePath(path: string): Result<string, IoError> {
   resolvedPath := resourcePath(path) else {
@@ -37,14 +37,14 @@ export function readBlobResource(path: string): Result<readonly byte[], IoError>
 
 import class NativeBlobReadStream from "native_fs.hpp" as NativeBlobReadStream {
   isolated static open(path: string, blockSize: int): Result<NativeBlobReadStream, IoError>
-  isolated next(): readonly byte[] | null
+  isolated next(): readonly byte[] | none
 }
 
 import class NativeFileWriteStream from "native_fs.hpp" as NativeFileWriteStream {
   isolated static open(path: string): Result<NativeFileWriteStream, IoError>
-  isolated writeBlob(data: readonly byte[]): Result<void, IoError>
-  isolated writeLine(line: string): Result<void, IoError>
-  isolated close(): Result<void, IoError>
+  isolated writeBlob(data: readonly byte[]): Result<none, IoError>
+  isolated writeLine(line: string): Result<none, IoError>
+  isolated close(): Result<none, IoError>
 }
 
 function normalizeStreamBlockSize(blockSize: int): int {
@@ -61,7 +61,7 @@ class BlockReadStream implements Stream<readonly byte[]> {
 
   next(): bool {
     chunk := native.next()
-    if chunk == null {
+    if chunk == none {
       return false
     }
     currentValue = chunk!
@@ -101,7 +101,7 @@ export function readResourceLineStream(path: string, blockSize: int = 65536): Re
   return readLineStream(resolved, blockSize)
 }
 
-export function writeBlobStream(path: string, chunks: Stream<readonly byte[]>): Result<void, IoError> {
+export function writeBlobStream(path: string, chunks: Stream<readonly byte[]>): Result<none, IoError> {
   try writer := NativeFileWriteStream.open(path)
   for chunk of chunks {
     try writer.writeBlob(chunk)
@@ -110,7 +110,7 @@ export function writeBlobStream(path: string, chunks: Stream<readonly byte[]>): 
   return Success()
 }
 
-export function writeLineStream(path: string, lines: Stream<string>): Result<void, IoError> {
+export function writeLineStream(path: string, lines: Stream<string>): Result<none, IoError> {
   try writer := NativeFileWriteStream.open(path)
   for line of lines {
     try writer.writeLine(line)
@@ -128,7 +128,7 @@ export function readResourceDir(path: string): Result<FileInfo[], IoError> {
   try resolved := resolveResourcePath(path)
   return readDir(resolved)
 }
-export import isolated function mkdir(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::mkdir
-export import isolated function remove(path: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::remove
-export import isolated function rename(sourcePath: string, destPath: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::rename
-export import isolated function copy(sourcePath: string, destPath: string): Result<void, IoError> from "native_fs.hpp" as doof_fs::copy
+export import isolated function mkdir(path: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::mkdir
+export import isolated function remove(path: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::remove
+export import isolated function rename(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::rename
+export import isolated function copy(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::copy

@@ -5,7 +5,7 @@ function artifactPath(name: string): string {
   return "build/tests/" + name
 }
 
-function assertBlobContents(path: string, expected: readonly byte[]): void {
+function assertBlobContents(path: string, expected: readonly byte[]): none {
   actual := try! readBlob(path)
   assert(actual.length == expected.length, "expected blob length to match")
 
@@ -23,7 +23,7 @@ function collectLines(path: string, blockSize: int): string[] {
   return lines
 }
 
-function assertCollectedLines(path: string, blockSize: int, expected: string[]): void {
+function assertCollectedLines(path: string, blockSize: int, expected: string[]): none {
   actual := collectLines(path, blockSize)
   assert(actual.length == expected.length, "expected line count to match")
 
@@ -42,7 +42,7 @@ function collectDecodedLines(path: string, blockSize: int): string[] {
   return lines
 }
 
-function assertDecodedLines(path: string, blockSize: int, expected: string[]): void {
+function assertDecodedLines(path: string, blockSize: int, expected: string[]): none {
   actual := collectDecodedLines(path, blockSize)
   assert(actual.length == expected.length, "expected decoded line count to match")
 
@@ -51,7 +51,7 @@ function assertDecodedLines(path: string, blockSize: int, expected: string[]): v
   }
 }
 
-function assertDirContainsFile(path: string, name: string): void {
+function assertDirContainsFile(path: string, name: string): none {
   entries := try! readDir(path)
   for entry of entries {
     if entry.name == name {
