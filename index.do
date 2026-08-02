@@ -57,7 +57,7 @@ function normalizeStreamBlockSize(blockSize: int): int {
 
 class BlockReadStream implements Stream<readonly byte[]> {
   native: NativeBlobReadStream
-  currentValue: readonly byte[] = []
+  let currentValue: readonly byte[] = []
 
   next(): bool {
     chunk := native.next()
