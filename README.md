@@ -191,7 +191,8 @@ Delete a file or empty directory.
 
 #### `rename(sourcePath: string, destPath: string): Result<void, IoError>`
 
-Move or rename a file or directory.
+Move or rename a file or directory. When the destination is an existing file,
+it is atomically replaced.
 
 #### `copy(sourcePath: string, destPath: string): Result<void, IoError>`
 

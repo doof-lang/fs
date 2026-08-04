@@ -347,9 +347,8 @@ Remove a file or empty directory.
 export import function rename(sourcePath: string, destPath: string): Result<void, IoError>
 ```
 
-Move or rename a file or directory. Exact overwrite behavior is platform-defined
-by the native bridge; handle `AlreadyExists` when the destination may already
-exist.
+Move or rename a file or directory. When the destination is an existing file,
+it is atomically replaced.
 
 ### `copy`
 

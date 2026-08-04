@@ -6,13 +6,43 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstring>
-#include <dirent.h>
 #include <fcntl.h>
 #include <memory>
 #include <string>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <vector>
+
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#ifdef small
+#undef small
+#endif
+#include <direct.h>
+#include <filesystem>
+#include <io.h>
+using ssize_t = std::intptr_t;
+#define fstat _fstat64
+#define stat _stat64
+#define lstat _stat64
+#ifndef S_ISREG
+#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+#endif
+#ifndef S_ISDIR
+#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
+#endif
+#ifndef S_ISLNK
+#define S_ISLNK(mode) (false)
+#endif
+#else
+#include <dirent.h>
+#include <unistd.h>
+#endif
 
 namespace doof_fs {
 
@@ -53,6 +83,31 @@ inline doof::Result<void, IoError> failureVoid(int err) {
     return doof::Failure<IoError>{mapErrno(err)};
 }
 
+#if defined(_WIN32)
+inline IoError mapWindowsError(DWORD error) {
+    switch (error) {
+        case ERROR_FILE_NOT_FOUND:
+        case ERROR_PATH_NOT_FOUND:
+            return IoError::NotFound;
+        case ERROR_ACCESS_DENIED:
+        case ERROR_SHARING_VIOLATION:
+            return IoError::PermissionDenied;
+        case ERROR_ALREADY_EXISTS:
+        case ERROR_FILE_EXISTS:
+            return IoError::AlreadyExists;
+        case ERROR_DIRECTORY:
+            return IoError::NotDirectory;
+        case ERROR_INVALID_NAME:
+        case ERROR_FILENAME_EXCED_RANGE:
+            return IoError::InvalidPath;
+        case ERROR_OPERATION_ABORTED:
+            return IoError::Interrupted;
+        default:
+            return IoError::Other;
+    }
+}
+#endif
+
 inline std::string joinPath(const std::string& dirPath, const std::string& entryName) {
     if (dirPath.empty() || dirPath.back() == '/') {
         return dirPath + entryName;
@@ -76,7 +131,7 @@ inline std::string basename(const std::string& path) {
     return path.substr(slash + 1, end - slash - 1);
 }
 
-inline EntryKind entryKindFromMode(mode_t mode) {
+inline EntryKind entryKindFromMode(int mode) {
     if (S_ISREG(mode)) {
         return EntryKind::File;
     }
@@ -102,7 +157,11 @@ inline doof::Result<int, IoError> openReadableFile(const std::string& path) {
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), O_RDONLY);
+    const int fd = ::open(path.c_str(), O_RDONLY
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+    );
     if (fd < 0) {
         return failureResult<int>(errno);
     }
@@ -126,7 +185,11 @@ inline doof::Result<int, IoError> openWritableFile(const std::string& path, int 
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), flags, 0666);
+    const int fd = ::open(path.c_str(), flags
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (fd < 0) {
         return failureResult<int>(errno);
     }
@@ -318,7 +381,11 @@ inline doof::Result<void, IoError> writeText(const std::string& path, const std:
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (fd < 0) {
         return failureVoid(errno);
     }
@@ -342,7 +409,11 @@ inline doof::Result<void, IoError> writeBlob(
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (fd < 0) {
         return failureVoid(errno);
     }
@@ -369,7 +440,11 @@ inline doof::Result<void, IoError> appendText(const std::string& path, const std
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
+    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (fd < 0) {
         return failureVoid(errno);
     }
@@ -393,7 +468,11 @@ inline doof::Result<void, IoError> appendBlob(
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
-    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
+    const int fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_APPEND
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (fd < 0) {
         return failureVoid(errno);
     }
@@ -466,6 +545,32 @@ inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoE
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
 
+#if defined(_WIN32)
+    std::error_code iterationError;
+    std::filesystem::directory_iterator iterator(std::filesystem::u8path(path), iterationError);
+    if (iterationError) {
+        return doof::Failure<IoError>{iterationError == std::errc::no_such_file_or_directory
+            ? IoError::NotFound : iterationError == std::errc::permission_denied
+            ? IoError::PermissionDenied : IoError::Other};
+    }
+    auto entries = std::make_shared<std::vector<std::shared_ptr<FileInfo>>>();
+    const std::filesystem::directory_iterator end;
+    while (iterator != end) {
+        const std::string name = iterator->path().filename().u8string();
+        const std::string fullPath = joinPath(path, name);
+        struct stat st {};
+        if (::lstat(fullPath.c_str(), &st) != 0) {
+            return failureResult<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>(errno);
+        }
+        const int64_t size = S_ISREG(st.st_mode) ? static_cast<int64_t>(st.st_size) : 0;
+        entries->push_back(std::make_shared<FileInfo>(name, entryKindFromMode(st.st_mode), size, instantFromStatTime(st.st_mtime)));
+        iterator.increment(iterationError);
+        if (iterationError) {
+            return doof::Failure<IoError>{IoError::Other};
+        }
+    }
+    return doof::Success<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>{entries};
+#else
     DIR* dir = ::opendir(path.c_str());
     if (!dir) {
         return failureResult<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>(errno);
@@ -508,13 +613,18 @@ inline doof::Result<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>, IoE
 
     ::closedir(dir);
     return doof::Success<std::shared_ptr<std::vector<std::shared_ptr<FileInfo>>>>{entries};
+#endif
 }
 
 inline doof::Result<void, IoError> mkdir(const std::string& path) {
     if (isInvalidPath(path)) {
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
+#if defined(_WIN32)
+    if (::_mkdir(path.c_str()) != 0) {
+#else
     if (::mkdir(path.c_str(), 0777) != 0) {
+#endif
         return failureVoid(errno);
     }
     return doof::Success<void>{};
@@ -541,9 +651,23 @@ inline doof::Result<void, IoError> rename(const std::string& sourcePath, const s
     if (isInvalidPath(sourcePath) || isInvalidPath(destPath)) {
         return doof::Failure<IoError>{IoError::InvalidPath};
     }
+#if defined(_WIN32)
+    std::wstring wideSource;
+    std::wstring wideDestination;
+    try {
+        wideSource = std::filesystem::u8path(sourcePath).wstring();
+        wideDestination = std::filesystem::u8path(destPath).wstring();
+    } catch (const std::filesystem::filesystem_error&) {
+        return doof::Failure<IoError>{IoError::InvalidPath};
+    }
+    if (!::MoveFileExW(wideSource.c_str(), wideDestination.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+        return doof::Failure<IoError>{mapWindowsError(::GetLastError())};
+    }
+#else
     if (::rename(sourcePath.c_str(), destPath.c_str()) != 0) {
         return failureVoid(errno);
     }
+#endif
     return doof::Success<void>{};
 }
 
@@ -560,12 +684,20 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
         return doof::Failure<IoError>{IoError::IsDirectory};
     }
 
-    const int srcFd = ::open(sourcePath.c_str(), O_RDONLY);
+    const int srcFd = ::open(sourcePath.c_str(), O_RDONLY
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+    );
     if (srcFd < 0) {
         return failureVoid(errno);
     }
 
-    const int destFd = ::open(destPath.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_TRUNC, 0666);
+    const int destFd = ::open(destPath.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_TRUNC
+#if defined(_WIN32)
+        | O_BINARY
+#endif
+        , 0666);
     if (destFd < 0) {
         const int err = errno;
         ::close(srcFd);
@@ -611,6 +743,12 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
 }
 
 } // namespace doof_fs
+
+#if defined(_WIN32)
+#undef fstat
+#undef stat
+#undef lstat
+#endif
 
 class NativeBlobReadStream {
 public:

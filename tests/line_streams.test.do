@@ -1,4 +1,4 @@
-import { EntryKind, exists, metadata, readBlob, readBlockStream, readDir, readLineStream, readText, remove, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
+import { EntryKind, exists, metadata, mkdir, readBlob, readBlockStream, readDir, readLineStream, readText, remove, rename, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
 import { blobStreamToLineStream } from "std/stream"
 
 function artifactPath(name: string): string {
@@ -65,6 +65,8 @@ function assertDirContainsFile(path: string, name: string): none {
 }
 
 export function testAll() {
+  if !exists("build") { try! mkdir("build") }
+  if !exists("build/tests") { try! mkdir("build/tests") }
   emptyPath := artifactPath(".line-streams.empty.txt")
   mixedPath := artifactPath(".line-streams.mixed.txt")
   sourcePath := artifactPath(".line-streams.source.txt")
@@ -73,6 +75,8 @@ export function testAll() {
   blobOutputPath := artifactPath(".line-streams.output.bin")
   unterminatedPath := artifactPath(".line-streams.unterminated.txt")
   trailingCrPath := artifactPath(".line-streams.trailing-cr.txt")
+  renameSourcePath := artifactPath(".line-streams.rename-source.txt")
+  renameDestinationPath := artifactPath(".line-streams.rename-destination.txt")
 
   try! writeText(emptyPath, "")
   emptyMetadata := try! metadata(emptyPath)
@@ -83,10 +87,17 @@ export function testAll() {
   assertDirContainsFile("build/tests", ".line-streams.empty.txt")
 
   try! writeText(mixedPath, "alpha\r\n\rbeta\n")
+  assert(try! readText(mixedPath) == "alpha\r\n\rbeta\n", "expected writeText to preserve newline bytes")
   try! writeText(sourcePath, "alpha\r\n\rbeta\n")
   try! writeBlob(blobSourcePath, [0, 1, 2, 3, 254, 255])
   try! writeText(unterminatedPath, "alpha\r\nbeta")
   try! writeText(trailingCrPath, "alpha\r")
+  try! writeText(renameSourcePath, "replacement")
+  try! writeText(renameDestinationPath, "original")
+
+  try! rename(renameSourcePath, renameDestinationPath)
+  assert(!exists(renameSourcePath), "expected rename source to be removed")
+  assert(try! readText(renameDestinationPath) == "replacement", "expected rename to replace destination")
 
   assertCollectedLines(emptyPath, 2, [])
   assertCollectedLines(mixedPath, 2, ["alpha", "", "beta"])
@@ -113,4 +124,5 @@ export function testAll() {
   try! remove(blobOutputPath)
   try! remove(unterminatedPath)
   try! remove(trailingCrPath)
+  try! remove(renameDestinationPath)
 }
