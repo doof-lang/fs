@@ -1,8 +1,6 @@
 #pragma once
 
 #include "doof_runtime.hpp"
-#include "types.hpp"
-
 #include <cerrno>
 #include <cstdint>
 #include <cstring>
@@ -148,8 +146,8 @@ inline int normalizeBlockSize(int blockSize) {
     return blockSize > 0 ? blockSize : 65536;
 }
 
-inline std::shared_ptr<Instant> instantFromStatTime(time_t seconds) {
-    return Instant::ofEpochSeconds(static_cast<int64_t>(seconds));
+inline std::shared_ptr<::std_::time::temporal::Instant> instantFromStatTime(time_t seconds) {
+    return ::std_::time::temporal::Instant::ofEpochSeconds(static_cast<int64_t>(seconds));
 }
 
 inline doof::Result<int, IoError> openReadableFile(const std::string& path) {
