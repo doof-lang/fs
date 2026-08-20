@@ -1,5 +1,6 @@
-import { EntryKind, exists, metadata, mkdir, readBlob, readBlockStream, readDir, readLineStream, readText, remove, rename, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
+import { EntryKind, copy, exchange, exists, metadata, mkdir, readBlob, readBlockStream, readDir, readLineStream, readText, remove, rename, writeBlob, writeBlobStream, writeLineStream, writeText } from "../index"
 import { blobStreamToLineStream } from "std/stream"
+import { platform, run } from "std/os"
 
 function artifactPath(name: string): string {
   return "build/tests/" + name
@@ -77,6 +78,12 @@ export function testAll() {
   trailingCrPath := artifactPath(".line-streams.trailing-cr.txt")
   renameSourcePath := artifactPath(".line-streams.rename-source.txt")
   renameDestinationPath := artifactPath(".line-streams.rename-destination.txt")
+  exchangeFirstPath := artifactPath(".line-streams.exchange-first.txt")
+  exchangeSecondPath := artifactPath(".line-streams.exchange-second.txt")
+  exchangeFirstDirectory := artifactPath(".line-streams.exchange-first")
+  exchangeSecondDirectory := artifactPath(".line-streams.exchange-second")
+  executableSourcePath := artifactPath(".line-streams.executable-source")
+  executableCopyPath := artifactPath(".line-streams.executable-copy")
 
   try! writeText(emptyPath, "")
   emptyMetadata := try! metadata(emptyPath)
@@ -94,10 +101,38 @@ export function testAll() {
   try! writeText(trailingCrPath, "alpha\r")
   try! writeText(renameSourcePath, "replacement")
   try! writeText(renameDestinationPath, "original")
+  try! writeText(exchangeFirstPath, "first")
+  try! writeText(exchangeSecondPath, "second")
 
   try! rename(renameSourcePath, renameDestinationPath)
   assert(!exists(renameSourcePath), "expected rename source to be removed")
   assert(try! readText(renameDestinationPath) == "replacement", "expected rename to replace destination")
+
+  exchangeResult := exchange(exchangeFirstPath, exchangeSecondPath)
+  if platform() == "darwin" {
+    try! exchangeResult
+    assert(try! readText(exchangeFirstPath) == "second", "expected exchange first path to contain second file")
+    assert(try! readText(exchangeSecondPath) == "first", "expected exchange second path to contain first file")
+
+    try! mkdir(exchangeFirstDirectory)
+    try! mkdir(exchangeSecondDirectory)
+    try! writeText(exchangeFirstDirectory + "/value", "directory-first")
+    try! writeText(exchangeSecondDirectory + "/value", "directory-second")
+    try! exchange(exchangeFirstDirectory, exchangeSecondDirectory)
+    assert(try! readText(exchangeFirstDirectory + "/value") == "directory-second", "expected non-empty directories to exchange")
+    assert(try! readText(exchangeSecondDirectory + "/value") == "directory-first", "expected exchanged directory contents")
+
+    missingExchange := exchange(artifactPath(".missing"), exchangeFirstPath)
+    case missingExchange {
+      _: Failure -> { },
+      _: Success -> assert(false, "expected exchange with a missing path to fail"),
+    }
+
+    try! writeText(executableSourcePath, "executable")
+    assert((try! run("/bin/chmod", ["0555", executableSourcePath])).exitCode == 0, "expected chmod fixture setup")
+    try! copy(executableSourcePath, executableCopyPath)
+    assert((try! run("/bin/test", ["-x", executableCopyPath])).exitCode == 0, "expected copy to preserve executable mode")
+  }
 
   assertCollectedLines(emptyPath, 2, [])
   assertCollectedLines(mixedPath, 2, ["alpha", "", "beta"])
@@ -125,4 +160,14 @@ export function testAll() {
   try! remove(unterminatedPath)
   try! remove(trailingCrPath)
   try! remove(renameDestinationPath)
+  try! remove(exchangeFirstPath)
+  try! remove(exchangeSecondPath)
+  if platform() == "darwin" {
+    try! remove(exchangeFirstDirectory + "/value")
+    try! remove(exchangeSecondDirectory + "/value")
+    try! remove(exchangeFirstDirectory)
+    try! remove(exchangeSecondDirectory)
+    try! remove(executableSourcePath)
+    try! remove(executableCopyPath)
+  }
 }

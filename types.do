@@ -25,4 +25,5 @@ export enum IoError {
   InvalidPath = 5,
   Interrupted = 6,
   Other = 7,
+  Unsupported = 8,
 }

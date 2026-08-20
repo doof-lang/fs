@@ -131,4 +131,6 @@ export function readResourceDir(path: string): Result<FileInfo[], IoError> {
 export import isolated function mkdir(path: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::mkdir
 export import isolated function remove(path: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::remove
 export import isolated function rename(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::rename
+export import isolated function exchange(firstPath: string, secondPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::exchange
 export import isolated function copy(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::copy
+export import isolated function copyPermissions(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::copyPermissions

@@ -71,6 +71,7 @@ Error cases returned by filesystem operations.
 | `InvalidPath` | `5` | Malformed or unsupported path |
 | `Interrupted` | `6` | Operation interrupted by a signal |
 | `Other` | `7` | Any other OS error |
+| `Unsupported` | `8` | Operation is unavailable on this platform |
 
 ---
 
@@ -194,6 +195,17 @@ Delete a file or empty directory.
 Move or rename a file or directory. When the destination is an existing file,
 it is atomically replaced.
 
+#### `exchange(firstPath: string, secondPath: string): Result<void, IoError>`
+
+Atomically exchanges two existing filesystem entries on macOS. This works for
+files and non-empty directories on the same filesystem. Other platforms return
+`IoError.Unsupported`.
+
 #### `copy(sourcePath: string, destPath: string): Result<void, IoError>`
 
-Copy a file to a new path.
+Copy a file to a new path while preserving its POSIX permission bits.
+
+#### `copyPermissions(sourcePath: string, destPath: string): Result<void, IoError>`
+
+Copies POSIX permission bits from one existing entry to another. Windows
+returns `IoError.Unsupported`.

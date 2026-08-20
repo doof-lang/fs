@@ -39,6 +39,9 @@ using ssize_t = std::intptr_t;
 #endif
 #else
 #include <dirent.h>
+#if defined(__APPLE__)
+#include <sys/stdio.h>
+#endif
 #include <unistd.h>
 #endif
 
@@ -669,6 +672,20 @@ inline doof::Result<void, IoError> rename(const std::string& sourcePath, const s
     return doof::Success<void>{};
 }
 
+inline doof::Result<void, IoError> exchange(const std::string& firstPath, const std::string& secondPath) {
+    if (isInvalidPath(firstPath) || isInvalidPath(secondPath)) {
+        return doof::Failure<IoError>{IoError::InvalidPath};
+    }
+#if defined(__APPLE__)
+    if (::renameatx_np(AT_FDCWD, firstPath.c_str(), AT_FDCWD, secondPath.c_str(), RENAME_SWAP) != 0) {
+        return failureVoid(errno);
+    }
+    return doof::Success<void>{};
+#else
+    return doof::Failure<IoError>{IoError::Unsupported};
+#endif
+}
+
 inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std::string& destPath) {
     if (isInvalidPath(sourcePath) || isInvalidPath(destPath)) {
         return doof::Failure<IoError>{IoError::InvalidPath};
@@ -727,6 +744,19 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
         }
     }
 
+    // A copied executable must remain executable. Restrict this to permission
+    // bits: ownership, timestamps, ACLs, and extended attributes are outside
+    // the intentionally small std/fs copy contract.
+#if !defined(_WIN32)
+    if (::fchmod(destFd, srcStat.st_mode & 07777) != 0) {
+        const int err = errno;
+        ::close(srcFd);
+        ::close(destFd);
+        ::unlink(destPath.c_str());
+        return failureVoid(err);
+    }
+#endif
+
     const int srcClose = ::close(srcFd);
     const int destClose = ::close(destFd);
     if (srcClose != 0) {
@@ -738,6 +768,24 @@ inline doof::Result<void, IoError> copy(const std::string& sourcePath, const std
         return failureVoid(errno);
     }
     return doof::Success<void>{};
+}
+
+inline doof::Result<void, IoError> copyPermissions(const std::string& sourcePath, const std::string& destPath) {
+    if (isInvalidPath(sourcePath) || isInvalidPath(destPath)) {
+        return doof::Failure<IoError>{IoError::InvalidPath};
+    }
+#if defined(_WIN32)
+    return doof::Failure<IoError>{IoError::Unsupported};
+#else
+    struct stat sourceStat {};
+    if (::stat(sourcePath.c_str(), &sourceStat) != 0) {
+        return failureVoid(errno);
+    }
+    if (::chmod(destPath.c_str(), sourceStat.st_mode & 07777) != 0) {
+        return failureVoid(errno);
+    }
+    return doof::Success<void>{};
+#endif
 }
 
 } // namespace doof_fs

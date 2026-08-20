@@ -86,6 +86,7 @@ Portable error category for filesystem operations.
 | `InvalidPath` | `5` | Path is malformed or unsupported by the platform bridge |
 | `Interrupted` | `6` | OS operation was interrupted |
 | `Other` | `7` | Any platform error not represented above |
+| `Unsupported` | `8` | Operation is unavailable on this platform |
 
 Defined in [types.do](../types.do).
 
@@ -350,14 +351,32 @@ export import function rename(sourcePath: string, destPath: string): Result<void
 Move or rename a file or directory. When the destination is an existing file,
 it is atomically replaced.
 
+### `exchange`
+
+```doof
+export import function exchange(firstPath: string, secondPath: string): Result<void, IoError>
+```
+
+Atomically exchanges two existing entries on macOS. Both paths must be on the
+same filesystem. Other platforms return `IoError.Unsupported`.
+
 ### `copy`
 
 ```doof
 export import function copy(sourcePath: string, destPath: string): Result<void, IoError>
 ```
 
-Copy a file to a destination path. Parent directories for the destination must
-already exist.
+Copy a file to a destination path while preserving its POSIX permission bits.
+Parent directories for the destination must already exist.
+
+### `copyPermissions`
+
+```doof
+export import function copyPermissions(sourcePath: string, destPath: string): Result<void, IoError>
+```
+
+Copies POSIX permission bits between existing filesystem entries. Windows
+returns `IoError.Unsupported`.
 
 ## Error Handling Patterns
 
