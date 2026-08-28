@@ -109,7 +109,7 @@ export function testAll() {
   assert(try! readText(renameDestinationPath) == "replacement", "expected rename to replace destination")
 
   exchangeResult := exchange(exchangeFirstPath, exchangeSecondPath)
-  if platform() == "darwin" {
+  if platform() == "darwin" || platform() == "linux" {
     try! exchangeResult
     assert(try! readText(exchangeFirstPath) == "second", "expected exchange first path to contain second file")
     assert(try! readText(exchangeSecondPath) == "first", "expected exchange second path to contain first file")
@@ -162,7 +162,7 @@ export function testAll() {
   try! remove(renameDestinationPath)
   try! remove(exchangeFirstPath)
   try! remove(exchangeSecondPath)
-  if platform() == "darwin" {
+  if platform() == "darwin" || platform() == "linux" {
     try! remove(exchangeFirstDirectory + "/value")
     try! remove(exchangeSecondDirectory + "/value")
     try! remove(exchangeFirstDirectory)

@@ -41,6 +41,9 @@ using ssize_t = std::intptr_t;
 #include <dirent.h>
 #if defined(__APPLE__)
 #include <sys/stdio.h>
+#elif defined(__linux__)
+#include <linux/fs.h>
+#include <sys/syscall.h>
 #endif
 #include <unistd.h>
 #endif
@@ -679,6 +682,15 @@ inline doof::Result<void, IoError> exchange(const std::string& firstPath, const 
 #if defined(__APPLE__)
     if (::renameatx_np(AT_FDCWD, firstPath.c_str(), AT_FDCWD, secondPath.c_str(), RENAME_SWAP) != 0) {
         return failureVoid(errno);
+    }
+    return doof::Success<void>{};
+#elif defined(__linux__) && defined(SYS_renameat2)
+    if (::syscall(SYS_renameat2, AT_FDCWD, firstPath.c_str(), AT_FDCWD, secondPath.c_str(), RENAME_EXCHANGE) != 0) {
+        const int err = errno;
+        if (err == ENOSYS || err == EINVAL || err == EOPNOTSUPP) {
+            return doof::Failure<IoError>{IoError::Unsupported};
+        }
+        return failureVoid(err);
     }
     return doof::Success<void>{};
 #else

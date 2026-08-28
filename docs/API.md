@@ -357,8 +357,9 @@ it is atomically replaced.
 export import function exchange(firstPath: string, secondPath: string): Result<void, IoError>
 ```
 
-Atomically exchanges two existing entries on macOS. Both paths must be on the
-same filesystem. Other platforms return `IoError.Unsupported`.
+Atomically exchanges two existing entries on macOS and Linux. Both paths must
+be on the same filesystem. Linux kernels or filesystems without
+`RENAME_EXCHANGE` support, and other platforms, return `IoError.Unsupported`.
 
 ### `copy`
 

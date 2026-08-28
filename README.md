@@ -197,8 +197,9 @@ it is atomically replaced.
 
 #### `exchange(firstPath: string, secondPath: string): Result<void, IoError>`
 
-Atomically exchanges two existing filesystem entries on macOS. This works for
-files and non-empty directories on the same filesystem. Other platforms return
+Atomically exchanges two existing filesystem entries on macOS and Linux. This
+works for files and non-empty directories on the same filesystem. Linux kernels
+or filesystems without `RENAME_EXCHANGE` support, and other platforms, return
 `IoError.Unsupported`.
 
 #### `copy(sourcePath: string, destPath: string): Result<void, IoError>`
