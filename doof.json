@@ -4,9 +4,12 @@
   "license": "ISC",
   "build": {
     "native": {
-      "extraCopyPaths": ["native_fs.hpp"]
+      "extraCopyPaths": [
+        "native_fs.hpp",
+        "native_file.hpp",
+        "native_file_platform.hpp"
+      ]
     }
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

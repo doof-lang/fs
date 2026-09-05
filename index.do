@@ -134,3 +134,6 @@ export import isolated function rename(sourcePath: string, destPath: string): Re
 export import isolated function exchange(firstPath: string, secondPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::exchange
 export import isolated function copy(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::copy
 export import isolated function copyPermissions(sourcePath: string, destPath: string): Result<none, IoError> from "native_fs.hpp" as doof_fs::copyPermissions
+
+export { File } from "./file"
+export { FileMode, FileLock } from "./types"

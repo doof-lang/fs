@@ -412,3 +412,8 @@ diagnostics, permissions, or user-facing error messages.
 - [types.do](../types.do) defines `EntryKind`, `FileInfo`, and `IoError`.
 - [tests/line_streams.test.do](../tests/line_streams.test.do) covers metadata,
   line splitting, stream copying, and LF-normalized line writes.
+
+## Persistent random-access handles
+
+See the [File API and locking guide](FILE.md) for `File`, `FileMode`, `FileLock`,
+typed binary access, and the additional `IoError` cases.

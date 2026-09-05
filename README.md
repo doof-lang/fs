@@ -2,6 +2,9 @@
 
 POSIX-oriented filesystem I/O. Provides one-shot functions for reading and writing entire files as text or binary, streaming APIs for large files, and directory utilities - all returning `Result` types so errors are handled explicitly.
 
+Persistent `File` handles add typed random access and constructor-held shared or
+exclusive whole-file locks on macOS, Linux, and Windows. See the [File guide](docs/FILE.md).
+
 ## Documentation
 
 - [Reference documentation](docs/API.md) covers types, one-shot I/O, streaming I/O, metadata, directory operations, error handling, and behavioral notes.
@@ -72,6 +75,10 @@ Error cases returned by filesystem operations.
 | `Interrupted` | `6` | Operation interrupted by a signal |
 | `Other` | `7` | Any other OS error |
 | `Unsupported` | `8` | Operation is unavailable on this platform |
+| `InvalidArgument` | `9` | Invalid file access options, negative size, or negative position |
+| `Closed` | `10` | Operation on a closed file handle |
+| `UnexpectedEof` | `11` | Exact read could not obtain all requested bytes |
+| `WouldBlock` | `12` | Nonblocking lock acquisition encountered contention |
 
 ---
 

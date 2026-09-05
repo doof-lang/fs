@@ -26,4 +26,20 @@ export enum IoError {
   Interrupted = 6,
   Other = 7,
   Unsupported = 8,
+  InvalidArgument = 9,
+  Closed = 10,
+  UnexpectedEof = 11,
+  WouldBlock = 12,
+}
+
+// Access and lifetime locking for persistent file handles.
+export enum FileMode {
+  ReadOnly,
+  ReadWrite,
+}
+
+export enum FileLock {
+  None,
+  Shared,
+  Exclusive,
 }
