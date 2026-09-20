@@ -8,7 +8,9 @@ exclusive whole-file locks on macOS, Linux, and Windows. See the [File guide](do
 ## Documentation
 
 - [Reference documentation](docs/API.md) covers types, one-shot I/O, streaming I/O, metadata, directory operations, error handling, and behavioral notes.
-- Tests can be run with `doof test fs`.
+- Unit tests can be run with `doof test fs`. The cross-process lock integration
+  gate is `fs/tests/run-file-process-integration.sh`; it builds its worker
+  before starting the integration program.
 
 ## Usage
 

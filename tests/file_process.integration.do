@@ -2,8 +2,10 @@ import { File, exists, remove, writeBlob } from "../index"
 import { Exec, ExecOptions, env, platform, run } from "std/os"
 import { Duration, Thread } from "std/time"
 
-export function testFileCrossProcessLocks(): none {
-  // Resolve the source fixture independently of the generated test runner cwd.
+function main(args: string[]): int {
+  assert(args.length == 1, "expected the lock worker executable path")
+  worker := args[0]
+  // Resolve the checkout independently of the integration runner cwd.
   let root = env("DOOF_STDLIB_ROOT") ?? "."
   let depth = 0
   while !exists(root + "/fs/tests/fixtures/lock-worker.do") && depth < 8 {
@@ -11,10 +13,6 @@ export function testFileCrossProcessLocks(): none {
     depth += 1
   }
   assert(exists(root + "/fs/tests/fixtures/lock-worker.do"), "must locate lock fixture")
-  output := root + "/fs/build/lock-worker"
-  built := try! run("doof", ["build", root + "/fs/tests/fixtures/lock-worker.do", "-o", output], ExecOptions { timeout: Duration.ofSeconds(120L) })
-  assert(built.exitCode == 0, "lock worker must build")
-  worker := output + (if platform() == "windows" then "/std-fs.exe" else "/std-fs")
   path := root + "/fs/build/process-lock.bin"
   ready := root + "/fs/build/process-lock.ready"
   if exists(ready) { try! remove(ready) }
@@ -53,4 +51,5 @@ export function testFileCrossProcessLocks(): none {
   assert((try! run(worker, [path, "exclusive", "try"], options)).exitCode == 0, "process exit must release lock")
   try! remove(ready)
   try! remove(path)
+  return 0
 }
