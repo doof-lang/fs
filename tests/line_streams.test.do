@@ -7,7 +7,7 @@ function artifactPath(name: string): string {
 }
 
 function assertBlobContents(path: string, expected: readonly byte[]): none {
-  actual := try! readBlob(path)
+  actual := readBlob(path)!
   assert(actual.length == expected.length, "expected blob length to match")
 
   for index of 0..<expected.length {
@@ -17,7 +17,7 @@ function assertBlobContents(path: string, expected: readonly byte[]): none {
 
 function collectLines(path: string, blockSize: int): string[] {
   lines: string[] := []
-  stream := try! readLineStream(path, blockSize)
+  stream := readLineStream(path, blockSize)!
   for line of stream {
     lines.push(line)
   }
@@ -35,7 +35,7 @@ function assertCollectedLines(path: string, blockSize: int, expected: string[]):
 
 function collectDecodedLines(path: string, blockSize: int): string[] {
   lines: string[] := []
-  blocks := try! readBlockStream(path, blockSize)
+  blocks := readBlockStream(path, blockSize)!
   let stream: Stream<string> = blobStreamToLineStream(blocks)
   for line of stream {
     lines.push(line)
@@ -53,7 +53,7 @@ function assertDecodedLines(path: string, blockSize: int, expected: string[]): n
 }
 
 function assertDirContainsFile(path: string, name: string): none {
-  entries := try! readDir(path)
+  entries := readDir(path)!
   for entry of entries {
     if entry.name == name {
       assert(entry.kind == EntryKind.File, "expected directory entry kind to be file")
@@ -66,8 +66,8 @@ function assertDirContainsFile(path: string, name: string): none {
 }
 
 export function testAll() {
-  if !exists("build") { try! mkdir("build") }
-  if !exists("build/tests") { try! mkdir("build/tests") }
+  if !exists("build") { mkdir("build")! }
+  if !exists("build/tests") { mkdir("build/tests")! }
   emptyPath := artifactPath(".line-streams.empty.txt")
   mixedPath := artifactPath(".line-streams.mixed.txt")
   sourcePath := artifactPath(".line-streams.source.txt")
@@ -85,42 +85,42 @@ export function testAll() {
   executableSourcePath := artifactPath(".line-streams.executable-source")
   executableCopyPath := artifactPath(".line-streams.executable-copy")
 
-  try! writeText(emptyPath, "")
-  emptyMetadata := try! metadata(emptyPath)
+  writeText(emptyPath, "")!
+  emptyMetadata := metadata(emptyPath)!
   assert(emptyMetadata.name == ".line-streams.empty.txt", "expected metadata name")
   assert(emptyMetadata.kind == EntryKind.File, "expected metadata kind to be file")
   assert(emptyMetadata.size == 0L, "expected empty file size")
   assert(emptyMetadata.modifiedAt.toEpochSeconds() > 0L, "expected modified timestamp")
   assertDirContainsFile("build/tests", ".line-streams.empty.txt")
 
-  try! writeText(mixedPath, "alpha\r\n\rbeta\n")
-  assert(try! readText(mixedPath) == "alpha\r\n\rbeta\n", "expected writeText to preserve newline bytes")
-  try! writeText(sourcePath, "alpha\r\n\rbeta\n")
-  try! writeBlob(blobSourcePath, [0, 1, 2, 3, 254, 255])
-  try! writeText(unterminatedPath, "alpha\r\nbeta")
-  try! writeText(trailingCrPath, "alpha\r")
-  try! writeText(renameSourcePath, "replacement")
-  try! writeText(renameDestinationPath, "original")
-  try! writeText(exchangeFirstPath, "first")
-  try! writeText(exchangeSecondPath, "second")
+  writeText(mixedPath, "alpha\r\n\rbeta\n")!
+  assert(readText(mixedPath)! == "alpha\r\n\rbeta\n", "expected writeText to preserve newline bytes")
+  writeText(sourcePath, "alpha\r\n\rbeta\n")!
+  writeBlob(blobSourcePath, [0, 1, 2, 3, 254, 255])!
+  writeText(unterminatedPath, "alpha\r\nbeta")!
+  writeText(trailingCrPath, "alpha\r")!
+  writeText(renameSourcePath, "replacement")!
+  writeText(renameDestinationPath, "original")!
+  writeText(exchangeFirstPath, "first")!
+  writeText(exchangeSecondPath, "second")!
 
-  try! rename(renameSourcePath, renameDestinationPath)
+  rename(renameSourcePath, renameDestinationPath)!
   assert(!exists(renameSourcePath), "expected rename source to be removed")
-  assert(try! readText(renameDestinationPath) == "replacement", "expected rename to replace destination")
+  assert(readText(renameDestinationPath)! == "replacement", "expected rename to replace destination")
 
   exchangeResult := exchange(exchangeFirstPath, exchangeSecondPath)
   if platform() == "darwin" || platform() == "linux" {
-    try! exchangeResult
-    assert(try! readText(exchangeFirstPath) == "second", "expected exchange first path to contain second file")
-    assert(try! readText(exchangeSecondPath) == "first", "expected exchange second path to contain first file")
+    exchangeResult!
+    assert(readText(exchangeFirstPath)! == "second", "expected exchange first path to contain second file")
+    assert(readText(exchangeSecondPath)! == "first", "expected exchange second path to contain first file")
 
-    try! mkdir(exchangeFirstDirectory)
-    try! mkdir(exchangeSecondDirectory)
-    try! writeText(exchangeFirstDirectory + "/value", "directory-first")
-    try! writeText(exchangeSecondDirectory + "/value", "directory-second")
-    try! exchange(exchangeFirstDirectory, exchangeSecondDirectory)
-    assert(try! readText(exchangeFirstDirectory + "/value") == "directory-second", "expected non-empty directories to exchange")
-    assert(try! readText(exchangeSecondDirectory + "/value") == "directory-first", "expected exchanged directory contents")
+    mkdir(exchangeFirstDirectory)!
+    mkdir(exchangeSecondDirectory)!
+    writeText(exchangeFirstDirectory + "/value", "directory-first")!
+    writeText(exchangeSecondDirectory + "/value", "directory-second")!
+    exchange(exchangeFirstDirectory, exchangeSecondDirectory)!
+    assert(readText(exchangeFirstDirectory + "/value")! == "directory-second", "expected non-empty directories to exchange")
+    assert(readText(exchangeSecondDirectory + "/value")! == "directory-first", "expected exchanged directory contents")
 
     missingExchange := exchange(artifactPath(".missing"), exchangeFirstPath)
     case missingExchange {
@@ -128,10 +128,10 @@ export function testAll() {
       _: Success -> assert(false, "expected exchange with a missing path to fail"),
     }
 
-    try! writeText(executableSourcePath, "executable")
-    assert((try! run("/bin/chmod", ["0555", executableSourcePath])).exitCode == 0, "expected chmod fixture setup")
-    try! copy(executableSourcePath, executableCopyPath)
-    assert((try! run("/bin/test", ["-x", executableCopyPath])).exitCode == 0, "expected copy to preserve executable mode")
+    writeText(executableSourcePath, "executable")!
+    assert((run("/bin/chmod", ["0555", executableSourcePath])!).exitCode == 0, "expected chmod fixture setup")
+    copy(executableSourcePath, executableCopyPath)!
+    assert((run("/bin/test", ["-x", executableCopyPath])!).exitCode == 0, "expected copy to preserve executable mode")
   }
 
   assertCollectedLines(emptyPath, 2, [])
@@ -143,31 +143,31 @@ export function testAll() {
   assertCollectedLines(trailingCrPath, 1, ["alpha"])
   assertDecodedLines(trailingCrPath, 1, ["alpha"])
 
-  sourceLines := try! readLineStream(sourcePath, 2)
-  try! writeLineStream(outputPath, sourceLines)
-  assert(try! readText(outputPath) == "alpha\n\nbeta\n", "expected writeLineStream to normalize endings to LF")
+  sourceLines := readLineStream(sourcePath, 2)!
+  writeLineStream(outputPath, sourceLines)!
+  assert(readText(outputPath)! == "alpha\n\nbeta\n", "expected writeLineStream to normalize endings to LF")
 
-  sourceBlob := try! readBlockStream(blobSourcePath, 2)
-  try! writeBlobStream(blobOutputPath, sourceBlob)
+  sourceBlob := readBlockStream(blobSourcePath, 2)!
+  writeBlobStream(blobOutputPath, sourceBlob)!
   assertBlobContents(blobOutputPath, [0, 1, 2, 3, 254, 255])
 
-  try! remove(emptyPath)
-  try! remove(mixedPath)
-  try! remove(sourcePath)
-  try! remove(outputPath)
-  try! remove(blobSourcePath)
-  try! remove(blobOutputPath)
-  try! remove(unterminatedPath)
-  try! remove(trailingCrPath)
-  try! remove(renameDestinationPath)
-  try! remove(exchangeFirstPath)
-  try! remove(exchangeSecondPath)
+  remove(emptyPath)!
+  remove(mixedPath)!
+  remove(sourcePath)!
+  remove(outputPath)!
+  remove(blobSourcePath)!
+  remove(blobOutputPath)!
+  remove(unterminatedPath)!
+  remove(trailingCrPath)!
+  remove(renameDestinationPath)!
+  remove(exchangeFirstPath)!
+  remove(exchangeSecondPath)!
   if platform() == "darwin" || platform() == "linux" {
-    try! remove(exchangeFirstDirectory + "/value")
-    try! remove(exchangeSecondDirectory + "/value")
-    try! remove(exchangeFirstDirectory)
-    try! remove(exchangeSecondDirectory)
-    try! remove(executableSourcePath)
-    try! remove(executableCopyPath)
+    remove(exchangeFirstDirectory + "/value")!
+    remove(exchangeSecondDirectory + "/value")!
+    remove(exchangeFirstDirectory)!
+    remove(exchangeSecondDirectory)!
+    remove(executableSourcePath)!
+    remove(executableCopyPath)!
   }
 }
