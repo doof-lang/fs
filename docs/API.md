@@ -145,8 +145,8 @@ export function readBlobResource(path: string): Result<readonly byte[], IoError>
 Use these for files bundled with an application:
 
 ```doof
-template := try! readTextResource("templates/welcome.txt")
-logo := try! readBlobResource("images/logo.png")
+template := readTextResource("templates/welcome.txt")!
+logo := readBlobResource("images/logo.png")!
 ```
 
 ### `writeBlob`
@@ -184,7 +184,7 @@ export function readBlockStream(path: string, blockSize: int = 65536): Result<St
 Open a file and return a stream of raw byte chunks.
 
 ```doof
-chunks := try! readBlockStream("archive.bin", 131072)
+chunks := readBlockStream("archive.bin", 131072)!
 for chunk of chunks {
   println("read ${chunk.length} bytes")
 }
@@ -230,7 +230,7 @@ Line handling is delegated to `std/stream.blobStreamToLineStream`:
 - an empty file emits no lines.
 
 ```doof
-lines := try! readLineStream("data.csv")
+lines := readLineStream("data.csv")!
 for line of lines {
   println(line)
 }
@@ -258,8 +258,8 @@ line feed (`\n`), close the writer, and return the first `IoError` encountered.
 This normalizes line endings to LF:
 
 ```doof
-input := try! readLineStream("mixed-endings.txt")
-try! writeLineStream("normalized.txt", input)
+input := readLineStream("mixed-endings.txt")!
+writeLineStream("normalized.txt", input)!
 ```
 
 ## Metadata And Directory Operations
@@ -307,7 +307,7 @@ Return direct entries in a directory. This does not recurse. Each
 `FileInfo.name` is an entry name relative to the directory.
 
 ```doof
-entries := try! readDir("assets")
+entries := readDir("assets")!
 for entry of entries {
   if entry.kind == EntryKind.File {
     println(entry.name)
@@ -381,11 +381,11 @@ returns `IoError.Unsupported`.
 
 ## Error Handling Patterns
 
-Use `try!` or declaration `else` when a filesystem failure should abort the
+Use postfix `!` or declaration `else` when a filesystem failure should abort the
 current operation:
 
 ```doof
-text := try! readText("config.json")
+text := readText("config.json")!
 ```
 
 Handle expected cases explicitly with `case`:
